@@ -472,7 +472,7 @@ punctuation, spelling, and grammar help with that goal.
 Use TODO comments for code that is temporary, a short-term solution, or
 good-enough but not perfect.
 
-TODOs should include the string TODO in all caps, followed by the full name
+TODOs should include the string TODO in all caps, followed by the initials
 of the person who can best provide context about the problem referenced by the
 TODO, in parentheses. A colon is optional. A comment explaining what there is
 to do is required. The main purpose is to have a consistent TODO format that
@@ -481,14 +481,8 @@ A TODO is not a commitment that the person referenced will fix the problem.
 Thus when you create a TODO, it is almost always your name that is given.
 
 ```ruby
-  # bad
-  # TODO(RS): Use proper namespacing for this constant.
-
-  # bad
-  # TODO(drumm3rz4lyfe): Use proper namespacing for this constant.
-
   # good
-  # TODO(Ringo Starr): Use proper namespacing for this constant.
+  # TODO(RS): Use proper namespacing for this constant.
 ```
 
 ### Commented-out code
