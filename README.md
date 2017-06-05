@@ -80,7 +80,7 @@ Airbnb also maintains a [JavaScript Style Guide][airbnb-javascript].
       ...
     end
 
-    # good
+    # bad
     def self.create_translation(phrase_id,
                                 phrase_key,
                                 target_locale,
