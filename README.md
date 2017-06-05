@@ -256,17 +256,6 @@ Airbnb also maintains a [JavaScript Style Guide][airbnb-javascript].
     end
     ```
 
-* <a name="newline-between-methods"></a>Include one, but no more than one, new
-    line between methods.<sup>[[link](#newline-between-methods)]</sup>
-
-    ```ruby
-    def a
-    end
-
-    def b
-    end
-    ```
-
 * <a name="method-def-empty-lines"></a>Use a single empty line to break between
     statements to break up methods into logical paragraphs internally.
     <sup>[[link](#method-def-empty-lines)]</sup>
