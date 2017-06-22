@@ -1,0 +1,1 @@
+We've talked a couple times about our `app/models`o directory being overloaded with classes that are not traditional (database backed) models. A solution we've come up with is to place these classes into the directory `app/lib`. The reasoning is that `/lib` can behave strangely with autoloading and this will help us get our classes organized and out of `models`.
