@@ -1,0 +1,19 @@
+pairs:
+  al: Alex Lobascio; bosh
+  dc: Dennis Collinson; denny
+  dg: Dan Goldenberg; dan.goldenberg
+  dh: Dan Hansen; dan
+  jn: Janice Ng; janice
+  jr: John Randall; john
+  kaz: Kaz Nakanishi; kaz
+  kn: Krista Nelson; krista
+  ks: Kat Sy; kat
+  ls: Lindsey Simard; lindsey
+  ms: Maxwell Salzberg; maxwell
+  rc: Ryan Clark; ryan
+  st: Simon Taranto; simon
+
+email:
+  prefix: pair
+  domain: backerkit.com
+  no_solo_prefix: true
