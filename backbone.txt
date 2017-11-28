@@ -1,0 +1,108 @@
+BK = {
+	Collections: {},
+	Models: {},
+	Views: {},
+	Routers: {},
+	utils: {}, //maybe call this window?
+	Globals: {}, //maybe call this application?
+};
+// Top level BackerKit namespace (BK)
+// lives in backerkit.js
+
+
+BK.Models.base = Backbone.Model.extend({});
+// Model placeholder base class
+
+BK.Collections.base = Backbone.Collection.extend({
+	model: BK.Models.base
+});
+// Collection placeholder base class pointing at model base
+
+BK.Routers.base = Backbone.Router.extend({
+	setCurrentPage: function(instance) {
+		this.cleanupCurrentPage(); //maybe calls some teardown
+		BK.Globals._currentPage = instance;
+		BK.Globals._currentPage.rendermaybe //not sure if wise in BK case
+	}
+});
+// Right now we don't have a currentPage concept, so this is more an idea
+// currentPage is really only useful in a single-page-app context where
+// the data may actually be kept in memory between pages.
+// We want it anyway because it makes inspecting state easier for debugging (BK.Globals._currentPage)
+
+BK.Routers.BackerFlowRouter = BK.Routers.base.extend({
+	routes: {
+		'/backers/addons': 'addons'
+	},
+
+	addons: function() {
+		var currentUser = BK.Globals.currentUser,
+			lineItems = new BK.Collections.LineItems(BK.utils.data('#lineItems').lineItems, {}),
+			extras = new BK.Collections.Extras(BK.utils.data('#extras').extras, {}),
+				//utils are browser-touching functions that we can't test directly (think `window.location = __` being replaced by `BK.utils.setLocation(__)`)
+			balanceInformation: new BK.Models.BalanceInfo(BK.utils.data('#balance', 'model'), {});
+
+		this.setCurrentPage(new BK.Views.AddonsPage({
+			el: '#addons-page'
+			model: currentUser,
+			lineItems: lineItems,
+			extras: extras,
+			balanceInformation: balanceInfo
+		}));
+	}
+});
+// How I might design a router:
+// Start with the standard route pattern matching
+// Have handler functions that do only a limited set of actions:
+// First, we reference globals that we want to use on our page - currentUser most importantly, but currentProject is another likely option
+// Then we load page-specific data that has been provided to us via data divs.
+// Due to quirks of jQuery .data reading, we should always use camelCase to reference top-level keys, but deeper-level keys will remain as the original format from Rails.
+// Because data divs are unique, IDs should be used to identify and select these elements.
+// We don't directly select the elements (using the util function instead) because in test, the test runner is itself the page, and changing page state could pollute other tests (or receive pollution) or even break the test run (window.location =...)
+// Data is then sent into models or collections as appropriate (with "parse: true" set as an option because we want to make Backbone behave (with respect to events, return values, other side effects) the same with page-load data as it does with AJAX data).
+// Finally we make the page, using the "el: <selector>" syntax because Backbone views, when given a string el option, will attach themselves to the actual page DOM. All other variables are referenced without mention of global data source ("currentUser" becomes "model", or at least "user").
+// In this case "model" was selected because the AddonsPage is conceptually the place where user actions affect themselves (their order/cart) even though this page may be focused on managing one or many addons.
+
+BK.Views.base = Backbone.View.extend({
+	render: function(){
+		this.preRender(); //hook
+		var newHTML = this.template(this.context());
+		this.subviews.each(function(subview) {
+			newHTML.$(subview.selector).html(subview.instance.render().$el);
+		});
+		this.$el.html(newHTML); //replace own html
+		this.postRender(); //hook
+		return this;
+	},
+
+	preRender: $.noop,
+	postRender: $.noop,
+	serializeData: function() { return {}; },
+	template: function() { raise('No template function defined'); },
+
+	also subview management code
+});
+// Finally an interesting base class :)
+// Render is the key concept here, and occurs in a couple stages:
+// First is preRender, which is a hook with a noop default that views may use for any teardown or special setup that cannot be managed through the normal serializeData/template/subview workflows.
+// It is recommended to avoid preRender (and postRender) as much as possible - they are provided so that libraries like selectize may be integrated, and so that odd implementations of render functions in Views from before the writing of the base can be ported over for other benefits.
+// "template" is a function that is defined by the Handlebars compiler when turning .hbs files into a single composite file of template string management transcoded to JS. In live code, the template function has been modified to warn if using a bad template name/path or if it fails to load.
+// The template is loaded into memory but not the live page DOM, and then each subview is attached while in-memory. This causes fewer writes to visible DOM, which means less styling and restyling.
+// After subviews are done, the new DOM is swapped in for the old one, and then postRender is called.
+// Subviews are added with a name and a selector. The name exists to prevent double-creating via bad logic - this has happened when a custom render function or event handler creates a new view without checking for an existing one. The selector could have been provided via the "el" option as a string (which would have immediately bound the view to the page) or through a provided DOM node (e.g. the parent passing "new MyView({el: this.$('#selector')})" (which can cause binding to an element that is removed).
+// The subview system uses the passed selector to call "this.$(selector)" because "this.$(...)" is a contextual jQuery call that operates from a view's ("this"'s) root element. There is less potential for naming conflicts via this nested-selection approach, and it allows us to manage new DOM in memory transparently even before it is rendered live.
+// A side effect of using "this.$()" is that jQuery and jasmine visibility-testing (view the browser-reported screen-presence APIs) will always report in-memory (not on-page) DOM as not visible. This gotcha means that visibility should be managed through a "hidden" class or rerendering while excluding elements-to-be-hidden via Handlebars logic.
+
+BK.Views.AddonsPage = BK.Views.base.extend({
+	template: HandlebarsTemplates.backerAddons,
+	initialize: function(options) {
+		this.lineItems,extras,balanceInformation,=etc;
+		this.balanceCalculator = new BK.Models.BalanceCalculator()
+	}
+});
+// Pages are really just boring views. If a page of the application is divided into several components (say, a sidebar, a form view, a list view) and some components share non-Global data (such as a lazy-loaded collection of Variants), either the router will have passed in the shared Model or Collection, or the Page is responsible for creating it and passing it to all necessary subviews.
+
+// From a high level, you should consider the application to be a tree. The root consists of a DOM node (the element matching the "el" selector string option on currentPage, and a top-level View (currentPage itself).
+// Evey subview will attach a View instance to the element within the parent element's DOM tree, so these selectors and bindings should be unique and parallel - two views should never attach to the same element, as they would break this uniqueness constraint and potentially fight over the correct rendering state of the element's own subtree (their template functions.)
+// Pages should avoid having event hash DOM bindings - the Page concept is really intended to be the permanent outgrowth of Router action handler state. Pages basically exist to coordinate subviews and data, not handle user interactions.
+// Views used as parts of pages are basically Components
