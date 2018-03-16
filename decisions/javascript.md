@@ -1,5 +1,7 @@
 *Let's talk about Javascript!*
 
+Note from Bosh: I jammed most of this out stream-of-consciousness style and didn't have much opportunity to reread it. Someone should probably read through it and remove redundancies and better group things.
+
 Toolchain
 ===
 
@@ -42,7 +44,7 @@ Architecture
 * Globals
   We have a couple existing globals available on most pages within the site - `currentBacker` and `currentAdmin` most notably, but also `window.BackerKit` itself.
   We prefer to manage globals through the `BackerKit.Globals` namespace, because various libraries and third party scripts (google analytics, etc) pollute the `window` namespace,
-  and it is easier to manage that `Globals` object in test than it is to manage all variables that may have been added to the `window` top level namespace.
+  and it is easier to manage that `Globals` object in test than it is to manage all variables that may have been added to the `window` top level namespace. Accessing globals anywhere deeper than a top-level router action handler is probably wrong, as they are very hard to manage in test. From one perspective, the document itself is a global, so using `$(_selector_)` is actually global access. Within views, always use `this.$(_selector_)` to ensure that instead of scoping to the whole page, you scope your find just to the view's `$el` and scoped DOM. Window functions (e.g. `window.location=` and `window.alert()`) are global functions that cause issues in test (in these cases by redirecting you off the test runner or by causing an alert that stops execution) and they should be wrapped in Util helpers such as `BackerKit.Utils.setLocation()`, which are passthroughs in prod, but are replaced by `SpecHelper.js` fakes in test.
 
 * Routers
   Backbone provides Routers as objects that can detect the current URL path and execute code for a matching page.
@@ -63,15 +65,17 @@ Architecture
 
   As an example of this architecture, consider a single-page application that has a searchable list of Pokemon. You will likely have a Page that is the Index for all 'mon. The backend embeds an array of all ten million pokemon species into a data `content_tag#pokemon_data` and a Router detects the path (`'pokemon/'`) and executes the matching `pokemonIndex` action function. That function will use `getData('#pokemon_data').pokemon` to load the initial data (species name, number, and combat types) into a collection, and pass that collection to a Page (`PokemonIndexPage`) and render it. The Page has no event bindings, but has two subviews (`PokemonList`, `SearchBox`). The list is an intermediate view - it creates an EmptyListView and renders it if there are no Pokemon in the collection, or it creates a PokemonListItemView for each 'mon if there are any. The list item views themselves may be bottom-level Components, or they may be intermediate and consist each of, for example, a PokemonStatisticBlockView and a SpeciesImageView, which themselves are components. Those views might have bindings, such as the ImageView having `'click img.preview': 'openFullScreenImage`. The search view could have `'submit form#name_search': 'filterCollectionByName'` which could cause the collection to remove its nonmatching members, and the ListView (not ListItemView) might have a binding in `initialize` that is `collection.on('change', _.bind(this.render))`.
 
-  * binding to existing dom vs rendering own dom
-    Views tend to render their own DOM
-  * events
-  * render pipeline
-  * pages
-  * modals
-  * components
-* models
-* collections
+  Views manage their HTML in two ways - some of them attach to existing Rails-provided DOM, and some render their own via the `render` function and the subviews that have been added. Most of the discussion here assumes you are using views and their own handlebars templates, so instead here are some thoughts around the hybrid approach. Just like with the hbs approach, you should ensure that multiple views do not try to own the same section of a page. DOM nodes should be captured that represent a relevant unit of structure - don't just capture the body tag because it's easy - as soon as you have two views that both want to attach to body, you have two parallel structures that may end up having interwoven dependencies, and you've effectively made one mashup view whose functionality ends up split into two unfollowable files. Madness.
+
+* Events
+  Never ever make custom events that you fire and listen to on DOM node. Never ever make custom events that you fire and listen to on Backbone models/collections, unless you're adding a very generic event that could be considered an oversight by Backbone entirely (the events around "valid"/"invalid" checking and triggering on models is the only example I know of. And add it to the Backerkit.Models.base class via generic methods instead of on Backbone.Model as a monkeypatch). Double triple super never ever _ever_ invent new events to be fired on Routers or Views.
+
+* Models and Collections
+  If you are on a router-managed page and you have any Views (either a single top-level Page-type view that contains all behavior and subviews on the page OR many views all created as unassociated siblings by your router), you should create Models and Collections, especially ones backed by `getData` reading out Rails-render-time data, in the router, and then hand them down through the view structures. The router should not be setting up instances as globals and then having a subview several levels deep just reaching into global state to find it. Doing that will make your entire subview tree nigh-untestable because you'll have to write `beforeEach` and `afterEach` handlers to ensure that you do not pollute tests via leaky objects.
+
+  Most server interactions can be modeled in a RESTful way, and Backbone's Models and Collections are written assuming the normal set of REST endpoints. You should probably find a way to conceptually fit most AJAX calls into a Model (even if the model is named after a concept which is not actually a table in the underlying postgres DB - JS and URL structures don't care as long as you obey CRUD normally) and define the `url` function to generate the right path for Rails. This will allow you to use `Model.save` (for create and update), `Model.fetch` (for show/edit), `Collection.fetch` (for index), etc. without much trouble.
+
+~IM OUT OF TIME GOOD LUCK WRITE JASMINE TESTS
 
 Lifecycle
 ===
@@ -89,4 +93,3 @@ How do we test JS?
 
 History
 ===
-lol
